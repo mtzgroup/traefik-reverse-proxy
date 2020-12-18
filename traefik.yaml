@@ -9,12 +9,10 @@ services:
       - 80:80
       # Listen on port 443, default for HTTPS
       - 443:443
-      # Rabbit MQ Dev and Prod
+      # Rabbit MQ (tls port)
       - 5671:5671
-      - 5673:5673
-      # Redis Dev and Prod
+      # Redis
       - 6379:6379
-      - 6381:6381
     deploy:
       placement:
         constraints:
@@ -35,7 +33,7 @@ services:
         - "traefik.http.middlewares.admin-auth.basicauth.users=admin:$$apr1$$c63GJnIV$$7ro92wfsauhupUg8MOeo11"
         # traefik-https the actual router using HTTPS
         # Uses the environment variable DOMAIN
-        - traefik.http.routers.traefik-public-https.rule=Host(`traefik.mtzlab.com`)
+        - traefik.http.routers.traefik-public-https.rule=Host(`${DOMAIN?Variable not set}`)
         - traefik.http.routers.traefik-public-https.entrypoints=https
         - traefik.http.routers.traefik-public-https.tls=true
         # Use the special Traefik service api@internal with the web UI/Dashboard
@@ -66,13 +64,10 @@ services:
       - --entrypoints.https.address=:443
       # Redirect ALL http connections to https by default
       - --entrypoints.http.http.redirections.entryPoint.to=https
-      - --entrypoints.web.http.redirections.entryPoint.scheme=https
       # Rabbit MQ; dev on defaut port so prod is more protected (less chance for accidental connections)
-      - --entrypoints.dev-rabbitmq.address=:5671
-      - --entrypoints.prod-rabbitmq.address=:5673
+      - --entrypoints.rabbitmq-secure.address=:5671
       # Redis; dev on defaut port so prod is more protected (less chance for accidental connections)
-      - --entrypoints.dev-redis.address=:6379
-      - --entrypoints.prod-redis.address=:6381
+      - --entrypoints.redis-secure.address=:6379
       # Create the certificate resolver "le" for Let's Encrypt, uses the environment variable EMAIL
       - --certificatesresolvers.le.acme.email=mtzgroupadmin@gmail.com
       # Store the Let's Encrypt certificates in the mounted volume
