@@ -2,13 +2,17 @@ version: "3.3"
 
 services:
   traefik:
-    # Use the latest v2.2.x Traefik image available
-    image: traefik:v2.2
+    # Use the latest v2.9.x Traefik image available
+    image: traefik:v2.9
     ports:
       # Listen on port 80, default for HTTP, necessary to redirect to HTTPS
       - 80:80
       # Listen on port 443, default for HTTPS
       - 443:443
+      # Rabbit MQ (tls port)
+      - 5671:5671
+      # Redis
+      - 6379:6379
     deploy:
       placement:
         constraints:
@@ -27,15 +31,6 @@ services:
         # admin-auth middleware with HTTP Basic auth
         # Using the environment variables TRAEFIK_USERNAME and HASHED_PASSWORD
         - "traefik.http.middlewares.admin-auth.basicauth.users=admin:$$apr1$$c63GJnIV$$7ro92wfsauhupUg8MOeo11"
-        # https-redirect middleware to redirect HTTP to HTTPS
-        # It can be re-used by other stacks in other Docker Compose files
-        - traefik.http.middlewares.https-redirect.redirectscheme.scheme=https
-        - traefik.http.middlewares.https-redirect.redirectscheme.permanent=true
-        # traefik-http set up only to use the middleware to redirect to https
-        # Uses the environment variable DOMAIN
-        - traefik.http.routers.traefik-public-http.rule=Host(`${DOMAIN?Variable not set}`)
-        - traefik.http.routers.traefik-public-http.entrypoints=http
-        - traefik.http.routers.traefik-public-http.middlewares=https-redirect
         # traefik-https the actual router using HTTPS
         # Uses the environment variable DOMAIN
         - traefik.http.routers.traefik-public-https.rule=Host(`${DOMAIN?Variable not set}`)
@@ -67,8 +62,14 @@ services:
       - --entrypoints.http.address=:80
       # Create an entrypoint "https" listening on port 443
       - --entrypoints.https.address=:443
+      # Redirect ALL http connections to https by default
+      - --entrypoints.http.http.redirections.entryPoint.to=https
+      # Rabbit MQ; dev on defaut port so prod is more protected (less chance for accidental connections)
+      - --entrypoints.rabbitmq-secure.address=:5671
+      # Redis; dev on defaut port so prod is more protected (less chance for accidental connections)
+      - --entrypoints.redis-secure.address=:6379
       # Create the certificate resolver "le" for Let's Encrypt, uses the environment variable EMAIL
-      - --certificatesresolvers.le.acme.email=${EMAIL?Variable not set}
+      - --certificatesresolvers.le.acme.email=mtzgroupadmin@gmail.com
       # Store the Let's Encrypt certificates in the mounted volume
       - --certificatesresolvers.le.acme.storage=/certificates/acme.json
       # Use the TLS Challenge for Let's Encrypt
